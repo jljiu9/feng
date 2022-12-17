@@ -1,10 +1,4 @@
 <template>
-    <!-- <h1>
-      {{nihao}}
-    </h1> -->
-    <!-- <a href="">dsd</a>
-    <p>dsd</p>
-    <a href="">jljiu</a> -->
     <nav class='kuang' ref='kuang'></nav>
     <div class="left-button" ref="left_button"
         :class="{ 'isActive': clk ? !blankArea : '', 'isActive-plus': clk ? blankArea : '' }">
@@ -37,7 +31,6 @@
                     </span>
                 </li>
             </template>
-
         </ul>
     </div>
 </template>
@@ -46,17 +39,19 @@
 import { ref, onMounted, h } from 'vue'
 import { useClipboard } from '@vueuse/core'
 const { copy } = useClipboard()
+
 // let rightClk = (x)=>{
 //     console.log(x.innerText)
 // }
+
 let clk = ref(false)
 let left_button = ref()
-
 let download = ref()
 let downloadItems = ref()
 let shareItem = ref()
 window.shareItem = shareItem
 let blankArea = ref(false)
+
 let itemPlus = [
     '新建文件夹',
     '上传文件',
@@ -210,9 +205,6 @@ onMounted(() => {
         let json = await response.json();
         return json
     }
-    // document.querySelectorAll.addEventListener('dblclick',(e)=>{
-    //     console.log(e)
-    // })
     document.onmousedown = async e => {
         if (!window.dialogFormVisible.value) window.dialog.value = window.login
         if (clk.value == true) {

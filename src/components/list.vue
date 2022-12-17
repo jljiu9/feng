@@ -18,9 +18,8 @@
     </div>
 </template>
   
-<script lang="ts" setup>
+<script setup>
 import { ref, onMounted, } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
 const multipleTableRef = ref()
 
 onMounted(() => {

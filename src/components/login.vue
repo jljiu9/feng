@@ -84,13 +84,16 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+// 这个是用来当做弹出面板的，用于登入注册、重命名等等
+
+
 let route = useRoute()
 let router = useRouter()
 
 const dialogFormVisible = ref(false)
 window.dialogFormVisible = dialogFormVisible
 
-
+// 控制面板的关闭事件
 // const handleClose = (done) => {
 //   ElMessageBox.confirm('Are you sure to close this dialog?')
 //     .then(() => {
@@ -111,7 +114,7 @@ onMounted(() => {
 	}, 100);
 
 })
-
+// 新建文件夹进行路由跳转的事件
 let anewfolder = (e) => {
 	console.log(document.querySelector('.el-input__inner').value)
 	let str = window.location.pathname
@@ -166,6 +169,8 @@ const rename = {
 	title: '重命名',
 	rule: ['name', 'psw']
 }
+
+
 const current = ref()
 window.dialog = current
 window.folder = folder
@@ -173,6 +178,7 @@ window.rename = rename
 window.login = login
 current.value = login
 
+// 重命名事件
 let torename = async (e) => {
 	let u = userFiles.value[currentPath.value].find(x => x.name == shareItem.value)
 	console.log(u)
@@ -210,7 +216,7 @@ let postRtnJson = async (url, body, header) => {
 let tijiao = ref()
 tijiao.value = '提交'
 
-
+// 登入事件
 let tologin = async (e) => {
 	e.preventDefault()
 	let res
@@ -232,6 +238,7 @@ let tologin = async (e) => {
 		tijiao.value = '密码错误！'
 	}
 }
+// 注册事件
 let toresign = async (e) => {
 	e.preventDefault()
 	let res = await fetch('/api/resign', {

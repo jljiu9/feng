@@ -13,7 +13,7 @@
             <div class="imgBox" v-if="currentUploadFile">
                 <div class="preview" v-if="currentUploadFile.type == 'image'">
                     <img style="display: none;" :src="currentUploadFile.file"
-                        @load="on_load($refs.img, currentUploadFile.name)" ref="img" fit="contain">
+                        @load="load_img($refs.img, currentUploadFile.name)" ref="img" fit="contain">
                 </div>
                 <div class="preview" v-if="currentUploadFile.type == 'video'">
                     <video id="video1" controls autoplay style="display: none;"
@@ -24,7 +24,7 @@
                 </div>
                 <div style="position: relative;" v-if="currentUploadFile.type !== 'image' && currentUploadFile.type !== 'video'">
                     <div class="preview">
-                        <img src="/src/assets/files.png" alt="" fit="contain" style="height: 86%;">
+                        <img src="/src/img/files.png" alt="" fit="contain" style="height: 86%;">
                     </div>
                     <span
                         style="cursor: pointer;position: absolute; top: 50%;left: 50%;transform: translate(-50%, -46%);">
@@ -61,15 +61,10 @@
 </template>
   
 <script setup >
-import { onMounted, ref, watch, reactive } from 'vue'
-// import { UploadFilled } from '@element-plus/icons-vue'
-// let dropIt = (e) => {
-//     console.log(e)
-//     return false
-// }
+import {  ref, watch, reactive } from 'vue'
 
-let md5List = ref({})
-window.md5List = md5List
+// let md5List = ref({})
+// window.md5List = md5List
 
 let postRtnJson = async (url, body, header) => {
     const response = await fetch(url, {
@@ -81,14 +76,16 @@ let postRtnJson = async (url, body, header) => {
     return json
 }
 
+// 存储已上传的文件
 let uploaded = reactive([])
 window.uploaded = uploaded
+
+
+// 这个说不清楚
 let aname = ref('')
 let bb = ref()
-
 let preview_url = ref()
 let time = 0
-
 watch(uploaded, async (xx, old) => {
     if (time == 1) {
         time--
@@ -129,10 +126,10 @@ watch(uploaded, async (xx, old) => {
             id: upload.url.match(/(?<=secure.notion-static.com\/)[A-Za-z0-9-]+(?!\/)/)[0]
         })
     }
-
 })
 
 let wait = ms => new Promise((s) => setTimeout(s, ms))
+// 生成视频预览图
 let play_video =async (x, name) => {
     // console.log(name)
     aname.value = name
@@ -169,18 +166,14 @@ let play_video =async (x, name) => {
     // document.querySelector('.video-preview').src = 
 }
 
+// 进度条
 const percentage = ref(0)
 window.percentage = percentage
-
+// 当前上传的文件
 const currentUploadFile = ref()
-// currentUploadFile.value = {
-//     name: 'xxx.jpg',
-//     type: 'image',
-//     size: '3M',
-//     file: 'https://fuss10.elemecdn.com/e/5d/4a731a90594a4af544c0c25941171jpeg.jpeg'
-// }
 window.currentUploadFile = currentUploadFile
 
+// 上传进度条颜色变换
 const colors = [
     { color: '#f56c6c', percentage: 20 },
     { color: '#e6a23c', percentage: 40 },
@@ -188,8 +181,8 @@ const colors = [
     { color: '#1989fa', percentage: 80 },
     { color: '#6f7ad3', percentage: 100 },
 ]
-
-let on_load = (x, name) => {
+// 生成图片预览图
+let load_img = (x, name) => {
     aname.value = name
     let canvas = document.querySelector('canvas')
     let ctx = canvas.getContext('2d')
@@ -213,56 +206,6 @@ let on_load = (x, name) => {
     }, 'image/jpeg', 0.7)
 }
 
-onMounted(() => {
-
-    // let file = document.querySelector('.el-upload__input')
-    // let getData = () => {
-    //     let canvas = document.querySelector('canvas')
-    //     let data_url = canvas.toDataURL()
-    //     let data_blob = canvas.toBlob(blob => {
-    //         url = URL.createObjectURL(blob)
-    //     })
-    // }
-    // let file = document.querySelector('input')
-    // let canvas = document.createElement('canvas')
-    // let body = document.querySelector('body')
-    // let ctx = canvas.getContext('2d')
-
-    // file.onchange = async e => {
-    //     let reader = new FileReader()
-    //     let blob = x => {
-    //         let img = new Image()
-    //         img.onload = () => {
-    //             let width = img.width, height = img.height
-    //             if (img.width < img.height) {
-    //                 img.style.width = '500px'
-    //                 img.style.height = 'auto'
-    //             } else {
-    //                 img.style.width = 'auto'
-    //                 img.style.height = '500px'
-    //             }
-    //             canvas.width = img.width
-    //             canvas.height = img.height
-    //             canvas.style.display = 'none'
-    //             ctx.drawImage(img, 0, 0, img.width, img.height)
-    //             canvas.toBlob(blob => {
-    //                 let img_x = new Image()
-    //                 url = URL.createObjectURL(blob)
-    //                 img_x.src = url
-    //                 document.querySelector('body').appendChild(img_x)
-
-    //                 img.parentNode.removeChild(img)
-    //             }, "image/jpeg", 0.9)
-    //         }
-    //         let url = URL.createObjectURL(x)
-    //         img.src = url
-    //         body.appendChild(img)
-    //     }
-    //     blob(e.target.files[0])
-    // }
-
-
-})
 </script>
 <style lang="scss">
 #uploadArea {

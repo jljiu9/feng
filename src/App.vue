@@ -1,60 +1,41 @@
 <script setup>
+// 导入组件
 import kuang from './components/kuang.vue'
 import login from './components/login.vue'
 import drawer from './components/drawer.vue'
-
 // import list from './components/list.vue'
 
+// 导入模块
 import { ref, onMounted, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElNotification as notify } from 'element-plus'
-
 // import Lightgallery from 'lightgallery/vue';
-// import lgZoom from 'lightgallery/plugins/zoom';
-// let lightGallery = null;
+
+// 这样做可以供所有组件使用
 window.notify = notify
+
 let route = useRoute()
 let router = useRouter()
 
-// let plugins = [lgZoom]
-// let onInit = (detail) => {
-// 	lightGallery = detail.instance;
-// }
-// let items = [
-// 	{
-// 		id: '1',
-// 		size: '1400-933',
-// 		src:
-// 			'https://images.unsplash.com/photo-1542103749-8ef59b94f47e?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1400&q=80',
-// 		thumb:
-// 			'https://images.unsplash.com/photo-1542103749-8ef59b94f47e?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=240&q=80',
-// 		subHtml: `<div class="lightGallery-captions">
-//                 <h4>Photo by <a href="https://unsplash.com/@dann">Dan</a></h4>
-//                 <p>Published on November 13, 2018</p>
-//             </div>`,
-// 	}
-// ]
-
-
 let getCookie = str => document.cookie.split('; ').find((x) => x.split('=')[0] == str)?.split('=')[1]
+
+// 获取用户名
 let username = ref()
 username.value = decodeURI(getCookie('uname'))
-if (username.value == 'undefined') {
-	username.value = '未登入'
-}
+if (username.value == 'undefined') username.value = '未登入'
 window.username = username
+// 获取邮箱
 let email = decodeURI(getCookie('uemail'))
 window.email = email
 
+// 鼠标点击视频缩略图后，播放视频的事件
 let lunchVideo = (e) => {
 	window.drawer.value = true
 	console.log(window.player)
 	window.aplayer.media.src = e.file
 	try {
 		if (e.preview) window.aplayer.media.poster = e.preview
-	} catch (error) {
-		
-	}
+	} catch (error) {}
 	window.aplayer.play()
 	window.tabs.value = 'play'
 	notify({
@@ -63,10 +44,11 @@ let lunchVideo = (e) => {
 	})
 }
 
+// 控制操作面板的开启
 let dialogFormVisible = () => {
 	window.dialogFormVisible.value = true
 }
-
+// 重命名事件
 let rename = (e) => {
 	let u = userFiles.value[currentPath.value].find(x => x.name == e.target.innerText)
 	console.log(u)
@@ -88,11 +70,11 @@ let rename = (e) => {
 	}, 100);
 
 }
-
+// 文件列表排序
 window.sortIt = (x) => {
 	x.sort((a, b) => {
-		const nameA = a.name.toUpperCase(); // ignore upper and lowercase
-		const nameB = b.name.toUpperCase(); // ignore upper and lowercase
+		const nameA = a.name.toUpperCase(); // 忽略大小写
+		const nameB = b.name.toUpperCase(); 
 		if (nameA < nameB) {
 			return -1;
 		}
@@ -104,6 +86,7 @@ window.sortIt = (x) => {
 	return '成功排序！'
 }
 
+// 一个简单封装的post请求，并得到返回的json数据
 let postRtnJson = async (url, body, header) => {
 	const response = await fetch(url, {
 		method: 'post',
@@ -115,16 +98,20 @@ let postRtnJson = async (url, body, header) => {
 }
 let userFiles = ref({})
 
+// 这个用来判断当前地址是不是处于分享链接的格式下
+// 用于区分个人的网盘路径地址和分享出去的路径地址
 let query = ref(null)
-// query.value = { usershare : null, ref: encodeURI(username) }
 window.query = query
 
+// 控制路由
 router.afterEach(async (to, from) => {
 	console.log(decodeURI(to.path))
 	console.log(decodeURI(from.path))
 
+	// 捕获当前地址为分享地址
 	if (to.query.usershare && to.query.ref) query.value = to.query
 
+	// 一些逻辑判断，用于触发发送获取当前路径下的文件数据
 	if (!userFiles.value[decodeURI(to.path)] || userFiles.value[decodeURI(to.path)].wrong == 0) {
 		if (!query.value) {
 			notify({
@@ -159,7 +146,7 @@ router.afterEach(async (to, from) => {
 })
 
 
-
+// 点击进入文件夹事件
 let intoFolder = (bbb) => {
 	let str = window.location.pathname
 	cl(decodeURI(window.location.href))
@@ -185,33 +172,27 @@ let intoFolder = (bbb) => {
 
 
 window.userFiles = userFiles
-let isList = ref(false)
 
 const visible = ref(false)
 window.drawer = visible
-window.list = isList
 
 let paths = ref('')
 window.paths = paths
 
 let currentPath = ref()
-// currentPath.value = '/'
 window.currentPath = currentPath
 
-
-const onBack = () => {
-	notify('Back')
-}
-let input = ref('')
-
+// 下面的暂时用不到，先不用管
+let isList = ref(false)
+window.list = isList
 let clk = ref()
-
 let isclk = ref(false)
 function toggle() {
 	let sider = document.querySelector('.sider')
 	!isclk.value ? sider.style.width = 0 : sider.style.width = '250px'
 	isclk.value = !isclk.value
 }
+
 onMounted(() => {
 	toggle()
 	// setTimeout(() => toggle(), 400);
@@ -228,7 +209,6 @@ onMounted(() => {
 			router.addRoute({
 				name: t,
 				path: t,
-				query: { usershare: 'xxx' },
 				component: { template: '' }
 				// component: list
 				// component: () => import('./components/list.vue')
@@ -242,7 +222,6 @@ onMounted(() => {
 	}
 	cl(router.getRoutes())
 	window.paths.value = window.rtnPaths(window.location.pathname)
-
 })
 </script>
 
@@ -279,14 +258,7 @@ onMounted(() => {
 						操作面板
 					</el-button>
 				</div>
-
 				<div v-if="!isList" class="blank">
-					<!-- <lightgallery :settings="{ speed: 300, plugins: plugins }" :onInit="onInit">
-							<a v-for="item in items" :key="item.id" data-lg-size="1400-932" className="gallery-item"
-								:data-src="item.src">
-								<img className="img-responsive" :src="item.thumb" />
-							</a>
-						</lightgallery> -->
 					<template v-for="file in userFiles[currentPath]" :key="file">
 
 						<div class="imgBox" v-if="(file.type == 'image')" :href="file.file" :name="file.name">
@@ -328,7 +300,7 @@ onMounted(() => {
 						<div class="imgBox" v-if="(file.type == 'another')" :href="file.file" :name="file.name">
 							<div style="position: relative;">
 								<div class="preview">
-									<img src="/src/assets/files.png" alt="" fit="contain" style="height: 86%;">
+									<img src="/src/img/files.png" alt="" fit="contain" style="height: 86%;">
 								</div>
 								<span
 									style="cursor: pointer;position: absolute; top: 50%;left: 50%;transform: translate(-50%, -46%);">
@@ -374,8 +346,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-// @import url('https://cdn.jsdelivr.net/npm/lightgallery@2.1.0-beta.1/css/lightgallery.css');
-// @import url('https://cdn.jsdelivr.net/npm/lightgallery@2.1.0-beta.1/css/lg-zoom.css');
 
 body {
 	margin: 0;
@@ -393,45 +363,6 @@ body {
 	height: calc(100vh - 74px);
 	width: 100%;
 }
-
-
-
-
-
-// .imgCard {
-// 	width: 100%;
-// 	height: 100%;
-// 	// margin: 20px;
-// 	border-radius: 18px;
-// 	// max-width: 90%;
-// 	// max-height: 90%;
-// 	position: relative;
-// 	// box-shadow: 0px 0px 10px fade(#fff, 80%);
-// 	//backgrounds defined below
-// 	background-size: contain !important;
-// background-repeat: no-repeat !important;
-// 	// background: url('https://assets.codepen.io/48941/photo-1560015534-cee980ba7e13.avif');
-// 	// &::after {
-// 	// 	width: 100%;
-// 	// 	height: 100%;
-// 	// 	border-radius: 25px;
-// 	// 	position: absolute;
-// 	// 	top: 0;
-// 	// 	left: 0;
-// 	// 	z-index: -1;
-// 	// 	content: '';
-// 	// 	background: inherit;
-// 	// 	filter: blur(9px);
-// 	// 	transform: scale(1.05);
-// 	// 	opacity: 0.8;
-// 	// 	transition: 500ms all ease-in-out 0ms;
-// 	// }
-
-// 	&:hover::after {
-// 		transform: scale(0.8);
-// 		opacity: 0;
-// 	}
-// }
 
 
 .textEllipsis {

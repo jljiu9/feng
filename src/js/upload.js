@@ -1,4 +1,3 @@
-// deno-lint-ignore-file
 import SparkMD5 from 'spark-md5'
 const cl = (str) => console.log(str)
 const el = (str) => document.getElementById(str)
@@ -188,7 +187,7 @@ function get_md5(ajax) {
         } else {
             md5 = spark.end()
             fileId = upload.url.match(/(?<=secure.notion-static.com\/)[A-Za-z0-9-]+(?!\/)/)[0]
-            window.md5List.value[window.location.pathname.replaceAll('/', `\\`)]
+            // window.md5List.value[window.location.pathname.replaceAll('/', `\\`)]
             await postRtnJson('/api/checkmd5', {
                 md5: md5,
                 id: fileId,

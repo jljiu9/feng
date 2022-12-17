@@ -80,21 +80,21 @@
     </el-drawer>
 </template>
 <script setup>
-import { ref, onMounted, defineProps } from 'vue'
+import { ref, onMounted } from 'vue'
 import upload from './upload.vue'
 import Plyr from 'plyr';
-import { useRoute, useRouter } from 'vue-router'
-let route = useRoute()
-let router = useRouter()
+
+// 返回事件，退到主页面
+let closeit = () => window.drawer.value = false
 
 let query = window.query
 
-// import { InputTag } from 'lew-ui'
-// const v = ref([]);
-
+// tab面板
 let tabs = ref('')
 tabs.value = 'upload'
 window.tabs = tabs
+
+// 不用管
 let isclk = ref(false)
 function toggle() {
     let sider = document.querySelectorAll('.sider')[1]
@@ -107,13 +107,12 @@ function toggle() {
     isclk.value = !isclk.value
 }
 
-// defineProps(['visible'])
 
 let visible = window.drawer
+// 用于在template中展示
 let username = window.username
 let email = window.email
 
-let closeit = () => window.drawer.value = false
 onMounted(() => {
     const player = new Plyr('#player');
     window.aplayer = player
@@ -121,18 +120,13 @@ onMounted(() => {
 })
 </script>
 <style lang="scss">
+
 .demo-tabs>.el-tabs__content {
     padding: 0px;
     color: #6b778c;
     font-size: 15px;
     //   font-weight: 600;
 }
-
-// .el-tabs--right .el-tabs__content,
-// .el-tabs--left .el-tabs__content {
-//     height: 100%;
-//     // width: 100%;
-// }
 
 .div-profile {
     align-items: center;
