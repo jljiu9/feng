@@ -7,7 +7,7 @@
                         <div class="flex items-center">
                             <el-avatar class="mr-3" :size="32"
                                 src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-                            <span class="text-large font-600 mr-3"> {{username}} </span>
+                            <span class="text-large font-600 mr-3"> {{ username }} </span>
                             <!-- <span class="text-sm mr-2" style="color: var(--el-text-color-regular)">
 									操作面板
 								</span> -->
@@ -29,17 +29,17 @@
                                 </div>
                                 <div
                                     style="margin-bottom: 0px;background-color: #ebebeb; padding:5px 15px;border-radius: 10px;color: #a6a6a6;">
-                                    {{username}}</div>
+                                    {{ username }}</div>
                                 <div
                                     style="margin-top: 0px;background-color: #ebebeb; padding:5px 20px;border-radius: 10px;color: #a6a6a6;">
-                                    {{email}}</div>
+                                    {{ email }}</div>
                                 <div
                                     style="margin-top: 0px;background-color: #ebebeb; padding:5px 20px;border-radius: 10px;color: #a6a6a6;">
-                                    无限容量    
+                                    无限容量
                                 </div>
                                 <div
                                     style="margin-top: 0px;background-color: #ebebeb; padding:5px 20px;border-radius: 10px;color: #a6a6a6;">
-                                    已使用<br><b>xx</b>个文件<br><b>xx</b>个文件夹    
+                                    已使用<br><b>xx</b>个文件<br><b>xx</b>个文件夹
                                 </div>
 
                                 <!-- <el-tag style="color: rgb(0 106 241);">用一句话来形容你</el-tag> -->
@@ -60,7 +60,8 @@
                             </el-tab-pane>
                             <el-tab-pane label="视频播放器" name="play">
                                 <div class="content">
-                                    <video id="player" playsinline controls data-poster="" style="max-height: calc(100vh - 80px);">
+                                    <video id="player" playsinline controls data-poster=""
+                                        style="max-height: calc(100vh - 80px);">
                                         <source />
                                     </video>
 
@@ -69,9 +70,9 @@
                             <el-tab-pane label="我的喜欢" name="love" v-if="!query">我的喜欢</el-tab-pane>
                             <el-tab-pane label="我的分享" name="share" v-if="!query">我的分享</el-tab-pane>
                             <!-- <el-tab-pane label="编辑资料" name="profile">资料</el-tab-pane> -->
-                            
+
                         </el-tabs>
-                        
+
                     </div>
                 </el-page-header>
             </div>
@@ -117,10 +118,19 @@ onMounted(() => {
     const player = new Plyr('#player');
     window.aplayer = player
     toggle()
+    let fullscreen = false
+    document.addEventListener("fullscreenchange", function (event) {
+        if (!fullscreen) {
+            document.getElementById('player').style.maxHeight = '100%'
+            fullscreen = true
+        } else {
+            document.getElementById('player').style.maxHeight = 'calc(100vh - 80px)'
+            fullscreen = false
+        }
+    });
 })
 </script>
 <style lang="scss">
-
 .demo-tabs>.el-tabs__content {
     padding: 0px;
     color: #6b778c;

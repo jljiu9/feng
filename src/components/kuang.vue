@@ -143,11 +143,12 @@ onMounted(() => {
         alert('禁止复制')
         //return false
     }
-    document.oncontextmenu = e => {
+   
+    function right(e) {
         e.preventDefault()
         let isbox = ''
-        // console.log(e.path)
-        e.path.map(x => {
+        console.log(e.composedPath())
+        e.composedPath().map(x => {
             if (window.list.value) {
                 if (x.className == 'el-table__row' || x.className == 'el-table__row success-row') {
                     blankArea.value = false
@@ -175,13 +176,13 @@ onMounted(() => {
 
                 }
                 if (x.className == 'blank' && !isbox) {
-                    if (!e.path.map(x => x = x.className).includes('imgBox')) {
+                    if (!e.composedPath().map(x => x = x.className).includes('imgBox')) {
                         blankArea.value = true
                         // console.log(blankArea.value)
                     }
                 }
                 if (x.className == 'card-header' && !isbox) {
-                    if (!e.path.map(x => x = x.className).includes('imgBox')) {
+                    if (!e.composedPath().map(x => x = x.className).includes('imgBox')) {
                         blankArea.value = true
                     }
                 }
@@ -195,6 +196,13 @@ onMounted(() => {
         left_button.value.style.left = e.x + window.scrollX + 'px'
         clk.value = true
     }
+    document.oncontextmenu = e => {
+        right(e)
+    }
+    document.ondblclick = e => {
+        right(e)
+    }
+
     let getCookie = str => document.cookie.split('; ').find((x) => x.split('=')[0] == str)?.split('=')[1]
     let postRtnJson = async (url, body, header) => {
         const response = await fetch(url, {
@@ -246,7 +254,7 @@ onMounted(() => {
                             dangerouslyUseHTMLString: true,
                             // message: h('a', { target: "_blank", href: href }, '手动点击跳转'),
                             message: `<a href="${href}" target="_blank">手动点击跳转</a><br>
-                                        <p>请自己记住链接，暂时做没做出分享面板来</p>`,
+                                        <p>请自行保存链接，暂时做没做出分享面板来</p>`,
                             duration: 0
                         })
                     }
@@ -344,11 +352,11 @@ onMounted(() => {
         // console.log(window.list)
         // console.log(e.path)
         let isEl = ''
-        e.path.map(x => {
+        e.composedPath().map(x => {
             if (x.className == 'el-scrollbar content'
-                && !e.path.map(x => x = x.className).includes('imgBox')
-                && !e.path.map(x => x = x.className).includes('el-table__header')
-                && !e.path.map(x => x = x.className).includes('card-header')
+                && !e.composedPath().map(x => x = x.className).includes('imgBox')
+                && !e.composedPath().map(x => x = x.className).includes('el-table__header')
+                && !e.composedPath().map(x => x = x.className).includes('card-header')
             ) {
                 isEl = true
             }

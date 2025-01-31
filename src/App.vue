@@ -70,6 +70,12 @@ let rename = (e) => {
 	}, 100);
 
 }
+
+let newbt = ()=>{
+	window.dialogFormVisible.value = true
+	window.dialog.value = window.bt
+}
+
 // 文件列表排序
 window.sortIt = (x) => {
 	x.sort((a, b) => {
@@ -148,6 +154,12 @@ router.afterEach(async (to, from) => {
 
 // 点击进入文件夹事件
 let intoFolder = (bbb) => {
+	let replace = [".mp4",".jpg",".", "#", "$", "[", "]"]
+    replace.map(x => {
+        bbb = bbb.replaceAll(x, '')
+    })
+
+
 	let str = window.location.pathname
 	cl(decodeURI(window.location.href))
 	cl(decodeURI(str))
@@ -247,6 +259,9 @@ onMounted(() => {
 							}}</el-breadcrumb-item>
 						</template>
 					</el-breadcrumb>
+					<el-button @click="newbt">
+						添加磁力
+					</el-button>
 					<!-- <el-button @click="(isList = !isList)">
 						切换视图
 					</el-button> -->

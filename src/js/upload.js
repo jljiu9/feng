@@ -186,7 +186,7 @@ function get_md5(ajax) {
             loadNext();
         } else {
             md5 = spark.end()
-            fileId = upload.url.match(/(?<=secure.notion-static.com\/)[A-Za-z0-9-]+(?!\/)/)[0]
+            fileId = upload.url.match(/(?<=us-west-2.amazonaws.com\/)[A-Za-z0-9-]+(?=\/)/)[0]
             // window.md5List.value[window.location.pathname.replaceAll('/', `\\`)]
             await postRtnJson('/api/checkmd5', {
                 md5: md5,

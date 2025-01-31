@@ -60,6 +60,22 @@
 				</span>
 			</div>
 		</template>
+		<template v-if="current.action == 'newbt'">
+			<el-form :model="form" style="display: flex;flex-wrap: wrap;align-items: center;justify-content: center;"
+				@submit.prevent="anewbt">
+				<el-form-item>
+					<el-input v-model="form.bt" autocomplete="on" clearable />
+				</el-form-item>
+			</el-form>
+			<div class="el-dialog__footer">
+				<span class="dialog-footer">
+					<!-- <el-button @click="dialogFormVisible = false">取消</el-button> -->
+					<el-button type="primary" class="btn" @click="anewbt">
+						添加
+					</el-button>
+				</span>
+			</div>
+		</template>
 		<template v-if="current.action == 'rename'">
 			<el-form :model="form" style="display: flex;flex-wrap: wrap;align-items: center;justify-content: center;"
 				@submit.prevent="torename">
@@ -147,7 +163,8 @@ const form = reactive({
 	psw: '',
 	email: '',
 	folder: '',
-	renmae: ''
+	renmae: '',
+	bt: ''
 })
 const signup = {
 	action: 'signup',
@@ -164,6 +181,11 @@ const folder = {
 	title: '新建文件夹',
 	rule: ['name', 'psw']
 }
+const bt = {
+	action: 'newbt',
+	title: '添加磁力链接',
+	rule: ['name', 'psw']
+}
 const rename = {
 	action: 'rename',
 	title: '重命名',
@@ -176,6 +198,7 @@ window.dialog = current
 window.folder = folder
 window.rename = rename
 window.login = login
+window.bt = bt
 current.value = login
 
 // 重命名事件
@@ -199,6 +222,31 @@ let torename = async (e) => {
 	} else {
 		window.notify({
 			title: '重命名失败！',
+			duration: 1500
+		})
+	}
+}
+let anewbt = async (e) => {
+	console.log(document.querySelector('.el-input__inner').value)
+	let res = await postRtnJson('/api/setbthash', {
+		bthash: document.querySelector('.el-input__inner').value,
+		path: currentPath.value,
+		time: (new Date()).toLocaleString()
+	})
+	window.notify({
+		title: '磁力添加中...',
+		duration: 4000
+	})
+	if (res.setbt) {
+		// window.notify({
+		// 	title: '磁力成功！',
+		// 	duration: 1500
+		// })
+		dialogFormVisible.value = false
+		window.location.reload()
+	} else {
+		window.notify({
+			title: '磁力失败！',
 			duration: 1500
 		})
 	}
