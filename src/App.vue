@@ -262,6 +262,9 @@ onMounted(() => {
 					<el-button @click="newbt">
 						添加磁力
 					</el-button>
+					<div class="flex items-center justify-center p-4 bg-gray-100">
+						<span class="text-blue-500 font-bold">Tailwind CSS 已生效</span>
+					</div>
 					<!-- <el-button @click="(isList = !isList)">
 						切换视图
 					</el-button> -->
