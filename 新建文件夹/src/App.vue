@@ -3,7 +3,6 @@
 import kuang from './components/kuang.vue'
 import login from './components/login.vue'
 import drawer from './components/drawer.vue'
-// import drawer from './components/drawer copy.vue'
 // import list from './components/list.vue'
 
 // 导入模块
@@ -133,22 +132,20 @@ router.afterEach(async (to, from) => {
 			})
 		}
 
-		try{
-			if (query.value) {
-				userFiles.value[decodeURI(to.path)] = await postRtnJson('/api/getUserFiles' + location.search, {
+		if (query.value) {
+			userFiles.value[decodeURI(to.path)] = await postRtnJson('/api/getUserFiles' + location.search, {
+				path: decodeURI(window.location.pathname)
+			})
+		} else {
+			if (username.value !== '未登入') {
+				userFiles.value[decodeURI(to.path)] = await postRtnJson('/api/getUserFiles', {
 					path: decodeURI(window.location.pathname)
 				})
-			} else {
-				if (username.value !== '未登入') {
-					userFiles.value[decodeURI(to.path)] = await postRtnJson('/api/getUserFiles', {
-						path: decodeURI(window.location.pathname)
-					})
-				}
 			}
-			if (userFiles.value[decodeURI(to.path)].wrong !== 0) {
-				window.sortIt(userFiles.value[decodeURI(to.path)])
-			}
-		}catch(e){console.log(e)}
+		}
+		if (userFiles.value[decodeURI(to.path)].wrong !== 0) {
+			window.sortIt(userFiles.value[decodeURI(to.path)])
+		}
 	}
 	window.paths.value = window.rtnPaths(decodeURI(to.path))
 	window.currentPath.value = decodeURI(to.path)
@@ -262,6 +259,16 @@ onMounted(() => {
 							}}</el-breadcrumb-item>
 						</template>
 					</el-breadcrumb>
+					<el-button @click="newbt">
+						添加磁力
+					</el-button>
+					<!-- <div class="flex items-center justify-center p-4 bg-gray-100">
+						<span class="text-blue-500 font-bold">Tailwind CSS 已生效</span>
+					</div> -->
+					<!-- <el-button @click="(isList = !isList)">
+						切换视图
+					</el-button> -->
+					<!-- Form -->
 					<el-button text @click="dialogFormVisible">
 						注册&登入
 					</el-button>

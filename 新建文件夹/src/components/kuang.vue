@@ -20,11 +20,11 @@
                         </span>
                     </a>
                 </li>
-                <li class="menu-item" v-if="i == '标记喜欢😍'">
+                <!-- <li class="menu-item" v-if="i == '标记喜欢😍'">
                     <span  style="text-decoration:line-through;">
                         {{ i }}
                     </span>
-                </li>
+                </li> -->
                 <li class="menu-item" v-else>
                     <span>
                         {{ i }}
@@ -192,30 +192,9 @@ onMounted(() => {
         })
         // console.log(e.target)
 
-        // 计算菜单位置和方向
-        const menuWidth = 150; // 菜单宽度
-        const menuHeight = blankArea.value ? 122 : 198; // 根据不同状态计算菜单高度
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // 计算最终位置
-        let finalX = e.x + window.scrollX;
-        let finalY = e.y + window.scrollY;
-        
-        // 检查右边界
-        if (e.x + menuWidth > viewportWidth) {
-            finalX = e.x - menuWidth + window.scrollX;
-        }
-        
-        // 检查下边界
-        if (e.y + menuHeight > viewportHeight) {
-            finalY = e.y - menuHeight + window.scrollY;
-        }
-
-        // 应用位置
-        left_button.value.style.top = finalY + 'px';
-        left_button.value.style.left = finalX + 'px';
-        clk.value = true;
+        left_button.value.style.top = e.y + window.scrollY + 'px'
+        left_button.value.style.left = e.x + window.scrollX + 'px'
+        clk.value = true
     }
     document.oncontextmenu = e => {
         right(e)
@@ -448,7 +427,7 @@ ul {
 /* 右键菜单 */
 .left-button {
     z-index: 100;
-    position: fixed; /* 改为 fixed 定位，这样滚动时菜单位置不会错位 */
+    position: absolute;
     width: 150px;
     padding: 4px;
     height: 0px;

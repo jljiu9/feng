@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// 自定义 SCSS 样式
+:root {
+  // 在这里定义全局 CSS 变量
+}
+
+// 自定义组件样式
+@layer components {
+  // 在这里定义自定义组件样式
+}
+
+// 自定义工具类
+@layer utilities {
+  // 在这里定义自定义工具类
+} 
