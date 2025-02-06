@@ -4,6 +4,7 @@ import App from './App.vue'
 import './index.css'
 import Notification from './components/Notification.vue'
 import { useStore } from './store'
+import { initGlobalEvents } from './events'
 
 const { getters, actions } = useStore()
 
@@ -127,4 +128,14 @@ router.afterEach((to, from) => {
 
 const app = createApp(App)
 app.use(router)
+
+// 初始化全局事件
+const cleanup = initGlobalEvents()
+
+// 在应用卸载时清理全局事件
+app.unmount = () => {
+  cleanup()
+  app._instance.unmount()
+}
+
 app.mount('#app')

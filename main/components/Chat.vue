@@ -861,7 +861,21 @@
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useStore } from '../store'
 import { useApi } from '../api'
-import gsap from 'gsap'
+import {
+  messageFormatters,
+  animations,
+  inputHandlers,
+  fileHandlers,
+  voiceHandlers,
+  emojiData,
+  messageOperations,
+  contactOperations,
+  menuConfigs,
+  sortingUtils,
+  contactHandlers,
+  mediaHandlers,
+  notificationHandlers
+} from '../utils/chatUtils'
 
 const { state, actions, getters } = useStore()
 const api = useApi()
@@ -873,14 +887,7 @@ const user = computed(() => getters.user())
 const currentContact = computed(() => getters.currentContact())
 const contacts = computed(() => getters.contacts())
 const searchQuery = ref('')
-const filteredContacts = computed(() => {
-  if (!searchQuery.value) return contacts.value
-  const query = searchQuery.value.toLowerCase()
-  return contacts.value.filter(contact => 
-    contact.name.toLowerCase().includes(query) ||
-    contact.id.toString().includes(query)
-  )
-})
+const filteredContacts = computed(() => contactOperations.filterContacts(contacts.value, searchQuery.value))
 
 // 消息相关
 const messageList = ref(null)
@@ -906,6 +913,7 @@ const currentTab = ref('contacts')
 // 群聊相关
 const groups = computed(() => state.chat.groups)
 const groupUnreadCount = computed(() => (groupId) => state.chat.groupUnreadCount[groupId] || 0)
+const sortedGroups = computed(() => sortingUtils.sortGroups(getters.groups()))
 
 // 新增状态
 const showEmojiPicker = ref(false)
@@ -913,26 +921,12 @@ const isSending = ref(false)
 const messageInputRef = ref(null)
 const fileInput = ref(null)
 const showQuickPhrases = ref(false)
-const isRecording = ref(false)
-const recordingDuration = ref(0)
-const recordingTimer = ref(null)
 const previewImage = ref(null)
 const imageInput = ref(null)
 
-// 表情列表
-const emojis = ['😊', '😂', '🤣', '❤️', '😍', '🤔', '👍', '👋', '🎉', '🌹', '��', '✨', '🌟', '💪', '🤝', '', '', '🎈']
-
-// 快捷短语列表
-const quickPhrases = [
-  '你好！',
-  '谢谢',
-  '好的，没问题',
-  '稍等一下',
-  '收到',
-  '辛苦了',
-  '下班了，明天见',
-  '在忙吗？'
-]
+// 使用工具函数中的数据
+const emojis = emojiData.categories['常用']
+const quickPhrases = emojiData.quickPhrases
 
 // 插入表情
 const insertEmoji = (emoji) => {
@@ -941,26 +935,11 @@ const insertEmoji = (emoji) => {
 }
 
 // 自动调整输入框高度
-const autoGrow = () => {
-  const el = messageInputRef.value
-  if (!el) return
-  
-  // 保存当前滚动位置
-  const scrollPos = window.scrollY
-  
-  el.style.height = 'auto'
-  el.style.height = `${Math.min(el.scrollHeight, 150)}px`
-  
-  // 恢复滚动位置
-  window.scrollTo(0, scrollPos)
-}
+const autoGrow = () => inputHandlers.autoGrow(messageInputRef.value)
 
 // 处理回车发送
 const handleEnterPress = (e) => {
-  if (e.shiftKey) {
-    // Shift + Enter 换行
-    return
-  }
+  if (e.shiftKey) return
   sendMessage()
 }
 
@@ -988,12 +967,9 @@ const sendMessage = async () => {
     autoGrow()
     
     await nextTick()
-    scrollToBottom()
+    animations.scrollToBottom(messageList.value)
   } catch (error) {
-    actions.addNotification({
-      type: 'error',
-      message: '发送失败，请重试'
-    })
+    notificationHandlers.showError('发送失败，请重试', actions)
   } finally {
     isSending.value = false
   }
@@ -1001,133 +977,71 @@ const sendMessage = async () => {
 
 // 复制消息
 const copyMessage = async (content) => {
-  try {
-    await navigator.clipboard.writeText(content)
-    actions.addNotification({
-      type: 'success',
-      message: '复制成功'
-    })
-  } catch (error) {
-    actions.addNotification({
-      type: 'error',
-      message: '复制失败'
-    })
-  }
+  const success = await messageOperations.copyMessage(content)
+  notificationHandlers.handleOperationResult(
+    success,
+    '复制成功',
+    '复制失败',
+    actions
+  )
 }
 
 // 删除消息
 const deleteMessage = (messageId) => {
   // TODO: 实现删除消息功能
-  actions.addNotification({
-    type: 'success',
-    message: '消息已删除'
-  })
+  notificationHandlers.showSuccess('消息已删除', actions)
 }
 
 // 触发文件上传
-const triggerFileUpload = () => {
-  fileInput.value?.click()
-}
+const triggerFileUpload = () => fileInput.value?.click()
 
 // 处理文件上传
 const handleFileUpload = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
   
-  // TODO: 实现文件上传功能
-  actions.addNotification({
-    type: 'info',
-    message: '文件上传功能即将上线'
-  })
+  mediaHandlers.handleFileUpload(
+    file,
+    () => {
+      actions.addNotification({
+        type: 'info',
+        message: '文件上传功能即将上线'
+      })
+    },
+    (error) => {
+      actions.addNotification({
+        type: 'error',
+        message: error
+      })
+    }
+  )
   
-  // 清空选择
   event.target.value = ''
 }
 
 // 判断是否显示时间戳
 const shouldShowTimestamp = (message, index) => {
-  if (index === 0) return true
-  const prevMessage = currentMessages.value[index - 1]
-  const timeDiff = message.timestamp - prevMessage.timestamp
-  return timeDiff > 5 * 60 * 1000 // 超过5分钟显示时间戳
+  const prevMessage = index > 0 ? currentMessages.value[index - 1] : null
+  return messageOperations.shouldShowTimestamp(message, prevMessage)
 }
 
 // 格式化消息时间
-const formatMessageTime = (timestamp) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
-  
-  if (diff < 24 * 60 * 60 * 1000) {
-    // 今天
-    return date.toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } else if (diff < 48 * 60 * 60 * 1000) {
-    // 昨天
-    return '昨天 ' + date.toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } else {
-    // 更早
-    return date.toLocaleDateString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-}
+const formatMessageTime = messageFormatters.formatMessageTime
 
 // 选择联系人
-const selectContact = (contact) => {
-  actions.setCurrentContact(contact)
-  actions.markAsRead(contact.id)
-}
+const selectContact = (contact) => contactHandlers.selectContact(contact, actions)
 
 // 选择群聊
-const selectGroup = (group) => {
-  actions.setCurrentContact({
-    ...group,
-    type: 'group'
-  })
-  // 标记群聊消息为已读
-  if (user.value) {
-    actions.markGroupAsRead(group.id, user.value.id)
-  }
-}
+const selectGroup = (group) => contactHandlers.selectGroup(group, actions, user.value)
 
 // 搜索用户
 const searchUsers = async () => {
-  try {
-    // 这里应该调用实际的API
-    const results = await api.user.searchUsers(searchUserQuery.value)
-    searchResults.value = results
-  } catch (error) {
-    console.error('Search users error:', error)
-  }
+  await contactHandlers.searchUsers(searchUserQuery.value, api, searchResults)
 }
 
 // 添加新联系人
 const addNewContact = (newContact) => {
-  actions.addContact(newContact)
-  showAddContact.value = false
-  // 可以添加成功提示
-  actions.addNotification({
-    type: 'success',
-    message: `已添加 ${newContact.name} 为联系人`
-  })
-}
-
-// 格式化时间
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  contactHandlers.addNewContact(newContact, actions, showAddContact)
 }
 
 // 在线状态
@@ -1147,442 +1061,52 @@ const insertQuickPhrase = (phrase) => {
 }
 
 // 触发图片上传
-const triggerImageUpload = () => {
-  imageInput.value?.click()
-}
+const triggerImageUpload = () => imageInput.value?.click()
 
 // 处理图片上传
-const handleImageUpload = async (event) => {
+const handleImageUpload = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
   
-  if (!file.type.startsWith('image/')) {
-    actions.addNotification({
-      type: 'error',
-      message: '请选择图片文件'
-    })
-    return
-  }
-  
-  // TODO: 实现图片上传功能
-  actions.addNotification({
-    type: 'info',
-    message: '图片上传功能即将上线'
-  })
+  mediaHandlers.handleImageUpload(
+    file,
+    () => {
+      actions.addNotification({
+        type: 'info',
+        message: '图片上传功能即将上线'
+      })
+    },
+    (error) => {
+      actions.addNotification({
+        type: 'error',
+        message: error
+      })
+    }
+  )
   
   event.target.value = ''
 }
 
 // 处理粘贴事件
-const handlePaste = async (event) => {
-  const items = event.clipboardData?.items
-  if (!items) return
-
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile()
-      if (file) {
-        event.preventDefault()
-        // TODO: 处理图片上传
-        actions.addNotification({
-          type: 'info',
-          message: '图片上传功能即将上线'
-        })
-        break
-      }
-    }
-  }
+const handlePaste = (event) => {
+  mediaHandlers.handlePaste(event, (file) => {
+    actions.addNotification({
+      type: 'info',
+      message: '图片上传功能即将上线'
+    })
+  })
 }
 
 // 语音录制相关
-const toggleVoiceRecord = () => {
-  if (isRecording.value) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
+const { isRecording, recordingDuration, recordingTimer,startRecording } = voiceHandlers
+
+const handleStartRecording = async () => {
+  await voiceHandlers.startRecording()
 }
 
-const startRecording = async () => {
-  try {
-    // TODO: 实现实际的录音功能
-    isRecording.value = true
-    recordingDuration.value = 0
-    recordingTimer.value = setInterval(() => {
-      recordingDuration.value++
-    }, 1000)
-    
-    actions.addNotification({
-      type: 'info',
-      message: '开始录音'
-    })
-  } catch (error) {
-    actions.addNotification({
-      type: 'error',
-      message: '无法访问麦克风'
-    })
-  }
+const handleStopRecording = () => {
+  voiceHandlers.stopRecording()
 }
-
-const stopRecording = async () => {
-  if (!isRecording.value) return
-  
-  clearInterval(recordingTimer.value)
-  isRecording.value = false
-  
-  // TODO: 实现语音消息发送
-  actions.addNotification({
-    type: 'success',
-    message: '录音完成'
-  })
-}
-
-// 喵言相关
-const miaoyanState = computed(() => getters.miaoyanState())
-const isMiaoyanActive = computed(() => getters.isMiaoyanActive())
-
-// 使用AI建议
-const useAISuggestion = () => {
-  if (miaoyanState.value.currentResponse?.suggestion) {
-    messageInput.value = miaoyanState.value.currentResponse.suggestion
-    actions.toggleMiaoyan()
-    messageInputRef.value?.focus()
-  }
-}
-
-// 监听搜索用户输入
-watch(searchUserQuery, () => {
-  if (searchUserQuery.value) {
-    searchUsers()
-  } else {
-    searchResults.value = []
-  }
-})
-
-// 初始化
-onMounted(() => {
-  // 初始化模拟数据
-  actions.initMockData()
-  // 启动在线状态模拟
-  actions.simulateOnlineStatus()
-})
-
-// 在组件卸载时清理
-onUnmounted(() => {
-  if (recordingTimer.value) {
-    clearInterval(recordingTimer.value)
-  }
-})
-
-// 在 script setup 部分添加
-const toggleMiaoyan = () => {
-  actions.toggleMiaoyan()
-  if (!miaoyanState.value.isActive) {
-    actions.requestMiaoyanSuggestion()
-  }
-}
-
-// 优化消息动画处理
-const onBeforeEnter = (el) => {
-  el.style.opacity = '0'
-  el.style.transform = 'translateY(20px) scale(0.95)'
-}
-
-const onEnter = (el, done) => {
-  gsap.to(el, {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.4,
-    ease: 'elastic.out(1, 0.8)',
-    onComplete: done
-  })
-}
-
-const onLeave = (el, done) => {
-  gsap.to(el, {
-    opacity: 0,
-    y: -20,
-    scale: 0.95,
-    duration: 0.3,
-    ease: 'back.in(1.5)',
-    onComplete: done
-  })
-}
-
-// 优化滚动到底部的动画
-const scrollToBottom = () => {
-  if (!messageList.value) return
-  
-  const target = messageList.value.scrollHeight
-  const current = messageList.value.scrollTop
-  const distance = target - current
-  
-  if (distance > 0) {
-    gsap.to(messageList.value, {
-      scrollTop: target,
-      duration: 0.5,
-      ease: 'power2.out'
-    })
-  }
-}
-
-// 优化输入框动画
-const handleInputFocus = () => {
-  gsap.to(messageInputRef.value, {
-    scale: 1.01,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    duration: 0.3,
-    ease: 'back.out(1.7)'
-  })
-}
-
-const handleInputBlur = () => {
-  gsap.to(messageInputRef.value, {
-    scale: 1,
-    boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
-    duration: 0.2,
-    ease: 'power2.inOut'
-  })
-}
-
-// 工具栏配置
-const toolbarItems = [
-  {
-    icon: 'M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    tooltip: '表情',
-    onClick: () => showEmojiPicker.value = !showEmojiPicker.value,
-    isActive: computed(() => showEmojiPicker.value)
-  },
-  {
-    icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-    tooltip: '发送图片',
-    onClick: triggerImageUpload
-  },
-  {
-    icon: 'M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z',
-    tooltip: '按住说话',
-    onClick: toggleVoiceRecord,
-    isActive: computed(() => isRecording.value)
-  },
-  {
-    icon: 'M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13',
-    tooltip: '发送文件',
-    onClick: triggerFileUpload
-  },
-  {
-    icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2v2h-2v-2zm1.61-9.96c-2.06-.3-3.88.97-4.43 2.79-.18.58.26 1.17.87 1.17h.2c.41 0 .74-.29.88-.67.32-.89 1.27-1.5 2.3-1.28.95.2 1.65 1.13 1.57 2.1-.1 1.34-1.62 1.63-2.45 2.88 0 .01-.01.01-.01.02-.01.02-.02.03-.03.05-.09.15-.18.32-.25.5-.01.03-.03.05-.04.08-.01.02-.01.04-.02.07-.12.34-.2.75-.2 1.25h2c0-.42.11-.77.28-1.07.02-.03.03-.06.05-.09.08-.14.18-.27.28-.39.01-.01.02-.03.03-.04.1-.12.21-.23.33-.34.96-.91 2.26-1.65 1.99-3.56-.24-1.74-1.61-3.21-3.35-3.47z',
-    tooltip: '喵言助手',
-    onClick: toggleMiaoyan,
-    isActive: computed(() => miaoyanState.value.isActive)
-  }
-]
-
-// 表情分类
-const currentEmojiCategory = ref('常用')
-const emojiCategories = {
-  '常用': ['😊', '😂', '🤣', '❤️', '😍', '🤔', '👍', '👋'],
-  '表情': ['😀', '😃', '😄', '😁', '😅', '😆', '😉', '😊', '😋', '😎'],
-  '动物': ['🐱', '🐶', '🐼', '🐨', '🦊', '🐯', '🦁', '🐮'],
-  '食物': ['🍎', '🍕', '🍖', '🍗', '🍜', '🍣', '🍪', '🍰']
-}
-
-const filteredEmojis = computed(() => emojiCategories[currentEmojiCategory.value])
-
-// 侧边栏状态
-const showSidePanel = ref(false)
-const toggleSidePanel = () => {
-  showSidePanel.value = !showSidePanel.value
-}
-
-// 快捷操作配置
-const quickActions = [
-  {
-    name: '发起通话',
-    icon: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
-    onClick: () => {
-      actions.addNotification({
-        type: 'info',
-        message: '通话功能即将上线'
-      })
-    }
-  },
-  {
-    name: '发送名片',
-    icon: 'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2',
-    onClick: () => {
-      actions.addNotification({
-        type: 'info',
-        message: '名片分享功能即将上线'
-      })
-    }
-  },
-  {
-    name: '收藏',
-    icon: 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z',
-    onClick: () => {
-      actions.addNotification({
-        type: 'success',
-        message: '已添加到收藏'
-      })
-    }
-  },
-  {
-    name: '举报',
-    icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-    onClick: () => {
-      actions.addNotification({
-        type: 'info',
-        message: '举报功能即将上线'
-      })
-    }
-  }
-]
-
-// 消息搜索
-const messageSearchQuery = ref('')
-const searchMessages = computed(() => {
-  if (!messageSearchQuery.value) return []
-  const query = messageSearchQuery.value.toLowerCase()
-  return currentMessages.value.filter(msg => 
-    msg.content.toLowerCase().includes(query)
-  )
-})
-
-// 模拟媒体数据
-const recentMedia = [
-  { id: 1, url: 'https://picsum.photos/200/200?random=1', type: 'image' },
-  { id: 2, url: 'https://picsum.photos/200/200?random=2', type: 'image' },
-  { id: 3, url: 'https://picsum.photos/200/200?random=3', type: 'image' },
-  { id: 4, url: 'https://picsum.photos/200/200?random=4', type: 'image' },
-  { id: 5, url: 'https://picsum.photos/200/200?random=5', type: 'image' },
-  { id: 6, url: 'https://picsum.photos/200/200?random=6', type: 'image' }
-]
-
-// 模拟文件数据
-const recentFiles = [
-  { id: 1, name: '项目方案.docx', size: 1024 * 1024 * 2.5 },
-  { id: 2, name: '会议记录.pdf', size: 1024 * 512 },
-  { id: 3, name: '数据分析.xlsx', size: 1024 * 1024 * 1.8 }
-]
-
-// 模拟链接数据
-const recentLinks = [
-  { id: 1, title: '2024年Web开发趋势分析', url: 'https://example.com/web-trends-2024' },
-  { id: 2, title: '如何提高开发效率：10个实用技巧', url: 'https://example.com/dev-tips' },
-  { id: 3, title: '最新前端框架对比', url: 'https://example.com/framework-comparison' }
-]
-
-// 文件大小格式化
-const formatFileSize = (bytes) => {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-// 预览媒体
-const previewMedia = (media) => {
-  if (media.type === 'image') {
-    previewImage.value = media.url
-  }
-}
-
-// 下载文件
-const downloadFile = (file) => {
-  actions.addNotification({
-    type: 'info',
-    message: `正在下载：${file.name}`
-  })
-}
-
-// 打开链接
-const openLink = (url) => {
-  window.open(url, '_blank')
-}
-
-// 联系人快捷操作菜单
-const activeContactMenu = ref(null)
-const contactQuickActions = [
-  {
-    name: '置顶聊天',
-    icon: 'M5 15l7-7 7 7',
-    onClick: (contact) => {
-      actions.togglePinContact(contact.id)
-    }
-  },
-  {
-    name: '标记已读',
-    icon: 'M5 13l4 4L19 7',
-    onClick: (contact) => {
-      actions.markAsRead(contact.id)
-    }
-  },
-  {
-    name: '隐藏会话',
-    icon: 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21',
-    onClick: (contact) => {
-      actions.hideConversation(contact.id)
-    }
-  },
-  {
-    name: '消息免打扰',
-    icon: 'M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z',
-    onClick: (contact) => {
-      actions.toggleMuteContact(contact.id)
-    }
-  }
-]
-
-const showContactMenu = (event, contact) => {
-  event.preventDefault()
-  activeContactMenu.value = activeContactMenu.value === contact.id ? null : contact.id
-}
-
-// 点击其他地方关闭菜单
-const closeContactMenu = () => {
-  activeContactMenu.value = null
-}
-
-onMounted(() => {
-  document.addEventListener('click', closeContactMenu)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', closeContactMenu)
-})
-
-// 消息操作菜单配置
-const messageActions = [
-  {
-    name: '复制',
-    icon: 'M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3',
-    onClick: copyMessage
-  },
-  {
-    name: '回复',
-    icon: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6',
-    onClick: (message) => {
-      messageInput.value = `回复 @${message.senderName || currentContact.value.name}：\n`
-      messageInputRef.value?.focus()
-    }
-  },
-  {
-    name: '转发',
-    icon: 'M17 8l4 4m0 0l-4 4m4-4H3',
-    onClick: (message) => {
-      actions.addNotification({
-        type: 'info',
-        message: '转发功能即将上线'
-      })
-    }
-  },
-  {
-    name: '删除',
-    icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
-    type: 'danger',
-    onClick: deleteMessage
-  }
-]
 
 // 新消息提醒
 const hasNewMessage = ref(false)
@@ -1609,7 +1133,7 @@ watch(() => currentMessages.value?.length, (newLength, oldLength) => {
   if (newLength > oldLength) {
     if (isScrolledToBottom.value) {
       nextTick(() => {
-        scrollToBottom()
+        animations.scrollToBottom(messageList.value)
       })
     } else {
       hasNewMessage.value = true
@@ -1618,18 +1142,7 @@ watch(() => currentMessages.value?.length, (newLength, oldLength) => {
 })
 
 // 添加计算属性用于排序联系人列表
-const sortedContacts = computed(() => {
-  return filteredContacts.value.sort((a, b) => {
-    // 优先按置顶状态排序
-    if (a.isPinned && !b.isPinned) return -1
-    if (!a.isPinned && b.isPinned) return 1
-    
-    // 其次按最后消息时间排序
-    const aTime = new Date(a.lastTime || 0).getTime()
-    const bTime = new Date(b.lastTime || 0).getTime()
-    return bTime - aTime
-  })
-})
+const sortedContacts = computed(() => contactOperations.sortContacts(filteredContacts.value))
 
 // 添加删除确认对话框
 const showDeleteDialog = ref(false)
@@ -1645,15 +1158,9 @@ const confirmDelete = async () => {
   try {
     await actions.clearChatHistory(currentContact.value.id)
     showDeleteDialog.value = false
-    actions.addNotification({
-      type: 'success',
-      message: '聊天记录已清空'
-    })
+    notificationHandlers.showSuccess('聊天记录已清空', actions)
   } catch (error) {
-    actions.addNotification({
-      type: 'error',
-      message: '操作失败，请重试'
-    })
+    notificationHandlers.showError('操作失败，请重试', actions)
   }
 }
 
@@ -1663,24 +1170,12 @@ const toggleHiddenConversations = () => {
 
 // 添加通用的上下文菜单处理
 const showContextMenu = (event, item) => {
-  event.preventDefault()
-  event.stopPropagation()
-  activeContactMenu.value = activeContactMenu.value === item.id ? null : item.id
+  contactHandlers.showContextMenu(event, item, activeContactMenu)
 }
 
 // 添加通用的点击处理
 const handleItemClick = (item) => {
-  if (item.isHidden) {
-    actions.activateConversation(item)
-  } else {
-    if (item.type === 'group') {
-      selectGroup(item)
-    } else {
-      selectContact(item)
-    }
-  }
-  // 点击时关闭菜单
-  activeContactMenu.value = null
+  contactHandlers.handleItemClick(item, actions, user.value)
 }
 
 // 修改快捷操作菜单配置
@@ -1731,19 +1226,174 @@ const getQuickActions = (item) => [
   }
 ]
 
-// 添加群聊排序计算属性
-const sortedGroups = computed(() => {
-  return getters.groups().sort((a, b) => {
-    // 优先按置顶状态排序
-    if (a.isPinned && !b.isPinned) return -1
-    if (!a.isPinned && b.isPinned) return 1
-    
-    // 其次按最后消息时间排序
-    const aTime = new Date(a.lastTime || 0).getTime()
-    const bTime = new Date(b.lastTime || 0).getTime()
-    return bTime - aTime
-  })
+// 喵言相关
+const miaoyanState = computed(() => getters.miaoyanState())
+const isMiaoyanActive = computed(() => getters.isMiaoyanActive())
+
+// 使用AI建议
+const useAISuggestion = () => {
+  if (miaoyanState.value.currentResponse?.suggestion) {
+    messageInput.value = miaoyanState.value.currentResponse.suggestion
+    actions.toggleMiaoyan()
+    messageInputRef.value?.focus()
+  }
+}
+
+// 监听搜索用户输入
+watch(searchUserQuery, () => {
+  if (searchUserQuery.value) {
+    searchUsers()
+  } else {
+    searchResults.value = []
+  }
 })
+
+// 初始化
+onMounted(() => {
+  // 初始化模拟数据
+  actions.initMockData()
+  // 启动在线状态模拟
+  actions.simulateOnlineStatus()
+})
+
+// 在组件卸载时清理
+onUnmounted(() => {
+  if (recordingTimer.value) {
+    clearInterval(recordingTimer.value)
+  }
+})
+
+// 在 script setup 部分添加
+const toggleMiaoyan = () => {
+  actions.toggleMiaoyan()
+  if (!miaoyanState.value.isActive) {
+    actions.requestMiaoyanSuggestion()
+  }
+}
+
+// 使用动画处理函数
+const onBeforeEnter = animations.onBeforeEnter
+const onEnter = animations.onEnter
+const onLeave = animations.onLeave
+const handleInputFocus = () => animations.handleInputFocus(messageInputRef.value)
+const handleInputBlur = () => animations.handleInputBlur(messageInputRef.value)
+
+// 使用菜单配置
+const toolbarItems = computed(() => 
+  menuConfigs.getToolbarItems(showEmojiPicker, isRecording, miaoyanState, {
+    toggleEmoji: () => showEmojiPicker.value = !showEmojiPicker.value,
+    triggerImageUpload,
+    startRecording,
+    triggerFileUpload,
+    toggleMiaoyan
+  })
+)
+
+// 回复消息
+const replyMessage = (message) => {
+  notificationHandlers.showInfo('回复功能即将上线', actions)
+}
+
+// 转发消息
+const forwardMessage = (message) => {
+  notificationHandlers.showInfo('转发功能即将上线', actions)
+}
+
+const messageActions = computed(() => 
+  menuConfigs.getMessageActions({
+    copyMessage,
+    replyMessage,
+    forwardMessage,
+    deleteMessage
+  })
+)
+
+const contactQuickActions = computed(() => 
+  menuConfigs.getContactQuickActions(actions)
+)
+
+const quickActions = computed(() => 
+  menuConfigs.getQuickActions(actions)
+)
+
+// 表情分类
+const currentEmojiCategory = ref('常用')
+const emojiCategories = {
+  '常用': ['😊', '😂', '🤣', '❤️', '😍', '🤔', '👍', '👋'],
+  '表情': ['😀', '😃', '😄', '😁', '😅', '😆', '😉', '😊', '😋', '😎'],
+  '动物': ['🐱', '🐶', '🐼', '🐨', '🦊', '🐯', '🦁', '🐮'],
+  '食物': ['🍎', '🍕', '🍖', '🍗', '🍜', '🍣', '🍪', '🍰']
+}
+
+const filteredEmojis = computed(() => emojiCategories[currentEmojiCategory.value])
+
+// 侧边栏状态
+const showSidePanel = ref(false)
+const toggleSidePanel = () => {
+  showSidePanel.value = !showSidePanel.value
+}
+
+// 模拟媒体数据
+const recentMedia = [
+  { id: 1, url: 'https://picsum.photos/200/200?random=1', type: 'image' },
+  { id: 2, url: 'https://picsum.photos/200/200?random=2', type: 'image' },
+  { id: 3, url: 'https://picsum.photos/200/200?random=3', type: 'image' },
+  { id: 4, url: 'https://picsum.photos/200/200?random=4', type: 'image' },
+  { id: 5, url: 'https://picsum.photos/200/200?random=5', type: 'image' },
+  { id: 6, url: 'https://picsum.photos/200/200?random=6', type: 'image' }
+]
+
+// 模拟文件数据
+const recentFiles = [
+  { id: 1, name: '项目方案.docx', size: 1024 * 1024 * 2.5 },
+  { id: 2, name: '会议记录.pdf', size: 1024 * 512 },
+  { id: 3, name: '数据分析.xlsx', size: 1024 * 1024 * 1.8 }
+]
+
+// 模拟链接数据
+const recentLinks = [
+  { id: 1, title: '2024年Web开发趋势分析', url: 'https://example.com/web-trends-2024' },
+  { id: 2, title: '如何提高开发效率：10个实用技巧', url: 'https://example.com/dev-tips' },
+  { id: 3, title: '最新前端框架对比', url: 'https://example.com/framework-comparison' }
+]
+
+// 预览媒体
+const previewMedia = (media) => mediaHandlers.previewMedia(media, previewImage)
+
+// 下载文件
+const downloadFile = (file) => mediaHandlers.downloadFile(file, actions)
+
+// 打开链接
+const openLink = (url) => mediaHandlers.openLink(url)
+
+// 格式化文件大小
+const formatFileSize = mediaHandlers.formatFileSize
+
+// 联系人快捷操作菜单
+const activeContactMenu = ref(null)
+
+
+const showContactMenu = (event, contact) => {
+  event.preventDefault()
+  activeContactMenu.value = activeContactMenu.value === contact.id ? null : contact.id
+}
+
+// 点击其他地方关闭菜单
+const closeContactMenu = () => {
+  activeContactMenu.value = null
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeContactMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeContactMenu)
+})
+
+// 在script setup中定义formatTime
+const formatTime = messageFormatters.formatMessageTime
+
 </script>
 
 <style scoped>
