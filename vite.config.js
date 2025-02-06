@@ -8,8 +8,10 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@use "sass:math";`,
-        implementation: 'sass'
+        // additionalData: `@use "sass:math";`,
+        // implementation: 'sass',
+        api: 'modern-compiler', // 或者 'modern'
+        // 或者其他Sass实现的选项
       }
     }
   },
