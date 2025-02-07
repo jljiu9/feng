@@ -76,7 +76,7 @@
         <div class="space-y-1">
           <template v-if="currentTab === 'contacts'">
             <div 
-              v-for="contact in searchQuery ? searchResults.filter(item => item.type === 'contact') : sortedContacts" 
+              v-for="contact in searchQuery ? searchContactResults.filter(item => item.type === 'contact') : sortedContacts" 
               :key="contact.id"
               class="contact-item flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all relative"
               :class="[
@@ -151,7 +151,7 @@
           
           <template v-else>
             <div 
-              v-for="group in searchQuery ? searchResults.filter(item => item.type === 'group') : sortedGroups" 
+              v-for="group in searchQuery ? searchContactResults.filter(item => item.type === 'group') : sortedGroups" 
               :key="group.id"
               class="contact-item flex items-center gap-3 mx-2 px-3 py-2 rounded-lg cursor-pointer transition-all relative"
               :class="[
@@ -373,6 +373,7 @@
                   <div 
                     class="absolute top-0 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity"
                     :class="message.senderId === user.id ? 'right-full mr-2' : 'left-full ml-2'"
+                    style="z-index: 50;"
                   >
                     <button 
                       v-for="action in messageActions"
@@ -384,7 +385,7 @@
                       <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path :d="action.icon" />
                       </svg>
-                      <div class="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs bg-popover/95 text-popover-foreground rounded-md shadow-lg opacity-0 group-hover/action:opacity-100 transition-opacity whitespace-nowrap backdrop-blur-sm">
+                      <div class="fixed z-[100] -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs bg-popover/95 text-popover-foreground rounded-md shadow-lg opacity-0 group-hover/action:opacity-100 transition-opacity whitespace-nowrap backdrop-blur-sm">
                         {{ action.name }}
                       </div>
                     </button>
@@ -854,11 +855,164 @@
         </div>
       </div>
     </Transition>
+
+    <!-- 添加联系人/群聊弹窗 -->
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div 
+        v-if="showAddContact"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      >
+        <div 
+          class="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg"
+          @click.stop
+        >
+          <!-- 标题 -->
+          <div class="mb-6 flex items-center justify-between">
+            <h2 class="text-lg font-medium">添加{{ currentTab === 'contacts' ? '联系人' : '群聊' }}</h2>
+            <button 
+              class="rounded-md p-1 hover:bg-muted/50"
+              @click="showAddContact = false"
+            >
+              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- 搜索框 -->
+          <div class="mb-4">
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input 
+                type="text"
+                v-model="searchUserQuery"
+                class="w-full rounded-md border bg-transparent pl-9 pr-3 py-2 text-sm"
+                :placeholder="currentTab === 'contacts' ? '搜索用户...' : '搜索群成员...'"
+                @input="handleSearchUsers"
+              />
+            </div>
+          </div>
+
+          <!-- 搜索结果 -->
+          <div v-if="currentTab === 'contacts'" class="max-h-60 overflow-y-auto space-y-2">
+            <div 
+              v-for="user in searchResults"
+              :key="user.id"
+              class="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
+            >
+              <div class="flex items-center gap-3">
+                <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span class="text-sm font-medium">{{ user.name.charAt(0) }}</span>
+                </div>
+                <div>
+                  <div class="text-sm font-medium">{{ user.name }}</div>
+                  <div class="text-xs text-muted-foreground">{{ user.department }} · {{ user.role === 'teacher' ? '老师' : '学生' }}</div>
+                </div>
+              </div>
+              <button 
+                v-if="!user.isAdded"
+                class="rounded-md px-2 py-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                @click="addContact(user)"
+              >
+                添加
+              </button>
+              <span v-else class="text-xs text-muted-foreground">已添加</span>
+            </div>
+            <div v-if="searchResults.length === 0" class="text-center text-sm text-muted-foreground py-4">
+              未找到相关用户
+            </div>
+          </div>
+
+          <!-- 创建群聊表单 -->
+          <div v-else class="space-y-4">
+            <div>
+              <label class="mb-1.5 block text-xs">群聊名称</label>
+              <input 
+                type="text"
+                v-model="newGroup.name"
+                class="w-full rounded-md border bg-transparent px-3 py-1.5 text-sm"
+                placeholder="请输入群聊名称"
+              />
+            </div>
+            
+            <div>
+              <label class="mb-1.5 block text-xs">已选成员 ({{ selectedMembers.length }})</label>
+              <div class="flex flex-wrap gap-2 mb-2">
+                <div 
+                  v-for="member in selectedMembers"
+                  :key="member.id"
+                  class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs"
+                >
+                  <span>{{ member.name }}</span>
+                  <button 
+                    class="rounded-full hover:bg-muted/50 p-0.5"
+                    @click="removeMember(member)"
+                  >
+                    <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="max-h-40 overflow-y-auto space-y-2">
+                <div 
+                  v-for="user in searchResults"
+                  :key="user.id"
+                  class="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span class="text-sm font-medium">{{ user.name.charAt(0) }}</span>
+                    </div>
+                    <div>
+                      <div class="text-sm font-medium">{{ user.name }}</div>
+                      <div class="text-xs text-muted-foreground">{{ user.department }} · {{ user.role }}</div>
+                    </div>
+                  </div>
+                  <button 
+                    class="rounded-md px-2 py-1 text-xs"
+                    :class="isSelected(user) ? 'bg-muted hover:bg-muted/80' : 'bg-primary text-primary-foreground hover:bg-primary/90'"
+                    @click="toggleMember(user)"
+                  >
+                    {{ isSelected(user) ? '已选' : '选择' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <button 
+                class="rounded-md px-3 py-1.5 text-xs hover:bg-muted/50"
+                @click="showAddContact = false"
+              >
+                取消
+              </button>
+              <button 
+                class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                :disabled="!newGroup.name || selectedMembers.length === 0"
+                @click="createGroup"
+              >
+                创建群聊
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted,reactive  } from 'vue'
 import { useStore } from '../store'
 import { useApi } from '../api'
 import {
@@ -902,10 +1056,15 @@ const currentMessages = computed(() => {
 // 添加联系人
 const showAddContact = ref(false)
 const searchUserQuery = ref('')
-const searchResults = computed(() => {
+const searchContactResults = computed(() => {
   if (!searchQuery.value) return []
   return getters.searchAllConversations(searchQuery.value)
 })
+const newGroup = reactive({
+  name: '',
+  members: []
+})
+const selectedMembers = ref([])
 
 // 标签页切换
 const currentTab = ref('contacts')
@@ -923,10 +1082,6 @@ const fileInput = ref(null)
 const showQuickPhrases = ref(false)
 const previewImage = ref(null)
 const imageInput = ref(null)
-
-// 使用工具函数中的数据
-const emojis = emojiData.categories['常用']
-const quickPhrases = emojiData.quickPhrases
 
 // 插入表情
 const insertEmoji = (emoji) => {
@@ -1034,15 +1189,108 @@ const selectContact = (contact) => contactHandlers.selectContact(contact, action
 // 选择群聊
 const selectGroup = (group) => contactHandlers.selectGroup(group, actions, user.value)
 
-// 搜索用户
-const searchUsers = async () => {
-  await contactHandlers.searchUsers(searchUserQuery.value, api, searchResults)
+// 搜索所有服务器上的用户，未加好友的
+let searchResults = ref([])
+const handleSearchUsers = async () => {
+  if (!searchUserQuery.value) {
+    searchResults.value = []
+    return
+  }
+  
+  try {
+    // 获取搜索结果
+    const results = await api.chat.searchUsers(searchUserQuery.value)
+    
+    // 获取当前联系人列表的ID
+    const currentContactIds = state.chat.contacts.map(contact => contact.id)
+    
+    // 过滤搜索结果，标记是否已添加
+    searchResults.value = results.map(user => ({
+      ...user,
+      isAdded: currentContactIds.includes(user.id)
+    }))
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+    notificationHandlers.showError('搜索用户失败', actions)
+  }
 }
 
-// 添加新联系人
-const addNewContact = (newContact) => {
-  contactHandlers.addNewContact(newContact, actions, showAddContact)
+// 添加联系人
+const addContact = async (user) => {
+  try {
+    const res = await api.chat.addContact(user.id)
+    if (res.success) {
+      actions.addContact(res.data)
+      showAddContact.value = false
+      notificationHandlers.showSuccess('添加联系人成功', actions)
+    }
+  } catch (error) {
+    console.error('添加联系人失败:', error)
+    notificationHandlers.showError('添加联系人失败', actions)
+  }
 }
+
+// 切换选择群成员
+const toggleMember = (user) => {
+  const index = selectedMembers.value.findIndex(m => m.id === user.id)
+  if (index === -1) {
+    selectedMembers.value.push(user)
+  } else {
+    selectedMembers.value.splice(index, 1)
+  }
+}
+
+// 移除群成员
+const removeMember = (member) => {
+  const index = selectedMembers.value.findIndex(m => m.id === member.id)
+  if (index !== -1) {
+    selectedMembers.value.splice(index, 1)
+  }
+}
+
+// 检查是否已选择
+const isSelected = (user) => {
+  return selectedMembers.value.some(m => m.id === user.id)
+}
+
+// 创建群聊
+const createGroup = async () => {
+  if (!newGroup.name || selectedMembers.value.length === 0) return
+  
+  try {
+    const res = await api.chat.createGroup({
+      name: newGroup.name,
+      members: selectedMembers.value.map(m => m.id),
+      owner: user.value.id
+    })
+    
+    if (res.success) {
+      actions.addContact({
+        ...res.data,
+        type: 'group'
+      })
+      showAddContact.value = false
+      notificationHandlers.showSuccess('创建群聊成功', actions)
+      
+      // 重置表单
+      newGroup.name = ''
+      selectedMembers.value = []
+    }
+  } catch (error) {
+    console.error('创建群聊失败:', error)
+    notificationHandlers.showError('创建群聊失败', actions)
+  }
+}
+
+// 监听弹窗关闭,重置状态
+watch(showAddContact, (val) => {
+  if (!val) {
+    searchUserQuery.value = ''
+    searchResults.value = []
+    newGroup.name = ''
+    selectedMembers.value = []
+  }
+})
 
 // 在线状态
 const isUserOnline = computed(() => (userId) => getters.isUserOnline(userId))
@@ -1242,7 +1490,7 @@ const useAISuggestion = () => {
 // 监听搜索用户输入
 watch(searchUserQuery, () => {
   if (searchUserQuery.value) {
-    searchUsers()
+    handleSearchUsers()
   } else {
     searchResults.value = []
   }
@@ -1318,14 +1566,7 @@ const quickActions = computed(() =>
 
 // 表情分类
 const currentEmojiCategory = ref('常用')
-const emojiCategories = {
-  '常用': ['😊', '😂', '🤣', '❤️', '😍', '🤔', '👍', '👋'],
-  '表情': ['😀', '😃', '😄', '😁', '😅', '😆', '😉', '😊', '😋', '😎'],
-  '动物': ['🐱', '🐶', '🐼', '🐨', '🦊', '🐯', '🦁', '🐮'],
-  '食物': ['🍎', '🍕', '🍖', '🍗', '🍜', '🍣', '🍪', '🍰']
-}
-
-const filteredEmojis = computed(() => emojiCategories[currentEmojiCategory.value])
+const filteredEmojis = computed(() => emojiData.categories[currentEmojiCategory.value])
 
 // 侧边栏状态
 const showSidePanel = ref(false)
@@ -1334,28 +1575,26 @@ const toggleSidePanel = () => {
 }
 
 // 模拟媒体数据
-const recentMedia = [
-  { id: 1, url: 'https://picsum.photos/200/200?random=1', type: 'image' },
-  { id: 2, url: 'https://picsum.photos/200/200?random=2', type: 'image' },
-  { id: 3, url: 'https://picsum.photos/200/200?random=3', type: 'image' },
-  { id: 4, url: 'https://picsum.photos/200/200?random=4', type: 'image' },
-  { id: 5, url: 'https://picsum.photos/200/200?random=5', type: 'image' },
-  { id: 6, url: 'https://picsum.photos/200/200?random=6', type: 'image' }
-]
+const recentMedia = ref([])
+const recentFiles = ref([])
+const recentLinks = ref([])
 
-// 模拟文件数据
-const recentFiles = [
-  { id: 1, name: '项目方案.docx', size: 1024 * 1024 * 2.5 },
-  { id: 2, name: '会议记录.pdf', size: 1024 * 512 },
-  { id: 3, name: '数据分析.xlsx', size: 1024 * 1024 * 1.8 }
-]
-
-// 模拟链接数据
-const recentLinks = [
-  { id: 1, title: '2024年Web开发趋势分析', url: 'https://example.com/web-trends-2024' },
-  { id: 2, title: '如何提高开发效率：10个实用技巧', url: 'https://example.com/dev-tips' },
-  { id: 3, title: '最新前端框架对比', url: 'https://example.com/framework-comparison' }
-]
+// 在 onMounted 中加载数据
+onMounted(async () => {
+  try {
+    const [media, files, links] = await Promise.all([
+      api.chat.getRecentMedia(),
+      api.chat.getRecentFiles(),
+      api.chat.getRecentLinks()
+    ])
+    
+    recentMedia.value = media
+    recentFiles.value = files
+    recentLinks.value = links
+  } catch (error) {
+    console.error('加载数据失败:', error)
+  }
+})
 
 // 预览媒体
 const previewMedia = (media) => mediaHandlers.previewMedia(media, previewImage)
@@ -1371,7 +1610,6 @@ const formatFileSize = mediaHandlers.formatFileSize
 
 // 联系人快捷操作菜单
 const activeContactMenu = ref(null)
-
 
 const showContactMenu = (event, contact) => {
   event.preventDefault()
@@ -1729,7 +1967,7 @@ textarea:focus {
 /* 联系人列表项样式 */
 .contact-item {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   will-change: background-color, transform, box-shadow;
 }
 

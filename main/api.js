@@ -235,29 +235,64 @@ export const chatApi = {
   // 搜索用户
   searchUsers: async (query) => {
     await new Promise(resolve => setTimeout(resolve, 500))
-    return [
-      {
-        id: 3,
-        name: '王老师',
-        role: 'teacher'
-      },
-      {
-        id: 4,
-        name: '赵同学',
-        role: 'student'
-      }
-    ].filter(user => 
+    // 模拟搜索结果
+    const mockUsers = [
+      { id: 1, name: '张老师', avatar: null, department: '教学部', role: 'teacher', status: 'online', lastMessage: null, lastTime: null },
+      { id: 2, name: '李老师', avatar: null, department: '教学部', role: 'teacher', status: 'offline', lastMessage: null, lastTime: null },
+      { id: 3, name: '王老师', avatar: null, department: '教学部', role: 'teacher', status: 'online', lastMessage: null, lastTime: null },
+      { id: 4, name: '赵同学', avatar: null, department: '学生部', role: 'student', status: 'online', lastMessage: null, lastTime: null },
+      { id: 5, name: '钱同学', avatar: null, department: '学生部', role: 'student', status: 'offline', lastMessage: null, lastTime: null },
+      { id: 6, name: '孙同学', avatar: null, department: '学生部', role: 'student', status: 'online', lastMessage: null, lastTime: null }
+    ]
+    
+    // 从store中获取当前联系人列表
+    const { state } = useStore()
+    const currentContacts = state.contacts || []
+    
+    // 过滤搜索结果并标记是否已添加
+    const filteredUsers = mockUsers.filter(user => 
       user.name.includes(query) || 
-      user.id.toString().includes(query)
-    )
+      user.department.includes(query) ||
+      user.role.includes(query)
+    ).map(user => ({
+      ...user,
+      isAdded: currentContacts.some(contact => contact.id === user.id)
+    }))
+    
+    return filteredUsers
   },
 
   // 添加联系人
   addContact: async (userId) => {
     await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // 从搜索结果中找到对应的用户
+    const { state } = useStore()
+    const mockUsers = [
+      { id: 1, name: '张老师', avatar: null, department: '教学部', role: 'teacher', status: 'online' },
+      { id: 2, name: '李老师', avatar: null, department: '教学部', role: 'teacher', status: 'offline' },
+      { id: 3, name: '王老师', avatar: null, department: '教学部', role: 'teacher', status: 'online' },
+      { id: 4, name: '赵同学', avatar: null, department: '学生部', role: 'student', status: 'online' },
+      { id: 5, name: '钱同学', avatar: null, department: '学生部', role: 'student', status: 'offline' },
+      { id: 6, name: '孙同学', avatar: null, department: '学生部', role: 'student', status: 'online' }
+    ]
+    
+    const targetUser = mockUsers.find(user => user.id === userId)
+    if (!targetUser) {
+      throw new Error('用户不存在')
+    }
+
+    const mockUser = {
+      ...targetUser,
+      lastMessage: '你好,很高兴认识你',
+      lastTime: new Date(),
+      unread: 0
+    }
+    
     return {
       success: true,
-      message: '添加成功'
+      data: mockUser,
+      message: '添加联系人成功'
     }
   },
 
@@ -347,14 +382,23 @@ export const chatApi = {
   // 创建群聊
   createGroup: async (data) => {
     await new Promise(resolve => setTimeout(resolve, 800))
-    return {
-      id: 'group_' + Date.now(),
+    // 模拟创建群聊
+    const mockGroup = {
+      id: Date.now(),
       name: data.name,
+      avatar: null,
       members: data.members,
       owner: data.owner,
-      type: 'group',
       lastMessage: '群聊创建成功',
-      lastTime: new Date()
+      lastTime: new Date(),
+      unread: 0,
+      type: 'group'
+    }
+    
+    return {
+      success: true,
+      data: mockGroup,
+      message: '创建群聊成功'
     }
   },
 
@@ -422,6 +466,50 @@ export const chatApi = {
       success: true,
       message: '设置已更新'
     }
+  },
+
+  // 获取最近媒体文件
+  getRecentMedia: async () => {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return [
+      { id: 1, url: 'https://picsum.photos/200/200?random=1', type: 'image' },
+      { id: 2, url: 'https://picsum.photos/200/200?random=2', type: 'image' },
+      { id: 3, url: 'https://picsum.photos/200/200?random=3', type: 'image' },
+      { id: 4, url: 'https://picsum.photos/200/200?random=4', type: 'image' },
+      { id: 5, url: 'https://picsum.photos/200/200?random=5', type: 'image' },
+      { id: 6, url: 'https://picsum.photos/200/200?random=6', type: 'image' }
+    ]
+  },
+
+  // 获取最近文件
+  getRecentFiles: async () => {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return [
+      { id: 1, name: '项目方案.docx', size: 1024 * 1024 * 2.5 },
+      { id: 2, name: '会议记录.pdf', size: 1024 * 512 },
+      { id: 3, name: '数据分析.xlsx', size: 1024 * 1024 * 1.8 }
+    ]
+  },
+
+  // 获取最近链接
+  getRecentLinks: async () => {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return [
+      { id: 1, title: '2024年Web开发趋势分析', url: 'https://example.com/web-trends-2024' },
+      { id: 2, title: '如何提高开发效率：10个实用技巧', url: 'https://example.com/dev-tips' },
+      { id: 3, title: '最新前端框架对比', url: 'https://example.com/framework-comparison' }
+    ]
+  },
+
+  // 获取群成员
+  getGroupMembers: async (groupId) => {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    // 模拟群成员数据
+    return [
+      { id: 1, name: '张三', avatar: null, role: 'owner' },
+      { id: 2, name: '李四', avatar: null, role: 'admin' },
+      { id: 3, name: '王五', avatar: null, role: 'member' }
+    ]
   }
 }
 

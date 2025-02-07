@@ -86,21 +86,27 @@ const state = reactive({
       name: '张老师',
       role: 'teacher',
       avatar: null,
-      status: 'online'
+      status: 'online',
+      lastMessage: '好的，我知道了',
+      lastTime: new Date()
     },
     {
       id: 2,
       name: '李同学',
       role: 'student',
       avatar: null,
-      status: 'offline'
+      status: 'offline',
+      lastMessage: '作业已经提交了',
+      lastTime: new Date()
     },
     {
       id: 3,
       name: '王老师',
       role: 'teacher',
       avatar: null,
-      status: 'online'
+      status: 'online',
+      lastMessage: '下周一见',
+      lastTime: new Date()
     }
   ],
 
@@ -283,8 +289,8 @@ const actions = {
       name: user.name,
       role: user.role,
       avatar: user.avatar,
-      lastMessage: '这是一条测试消息',
-      lastTime: new Date()
+      lastMessage: user.lastMessage,
+      lastTime: user.lastTime
     }))
 
     // 初始化模拟消息
