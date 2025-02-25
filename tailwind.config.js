@@ -45,7 +45,21 @@ export default {
         sidebar: {
           primary: "hsl(var(--sidebar-primary))",
           "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-        }
+        },
+        warning: {
+          DEFAULT: '#F59E0B',
+          foreground: '#451A03',
+          50: '#FEF3C7',
+          100: '#FDE68A',
+          200: '#FCD34D',
+          300: '#FBBF24',
+          400: '#F59E0B',
+          500: '#D97706',
+          600: '#B45309',
+          700: '#92400E',
+          800: '#78350F',
+          900: '#451A03',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -55,5 +69,11 @@ export default {
     },
   },
   plugins: [],
+  variants: {
+    extend: {
+      backgroundColor: ['active', 'disabled', 'responsive', 'hover', 'focus', 'group-hover', 'dark', 'dark-hover'],
+      backgroundOpacity: ['active', 'disabled', 'responsive', 'hover', 'focus', 'group-hover', 'dark', 'dark-hover'],
+    }
+  },
 }
 

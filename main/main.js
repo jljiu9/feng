@@ -40,8 +40,14 @@ const router = createRouter({
       }
     },
     {
+      path: '/clipboard',
+      component: () => import('./components/ClipboardManager.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/users',
       component: () => import('./components/Users.vue'),
+
       meta: { requiresAuth: true },
       children: [
         {

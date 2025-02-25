@@ -1,4 +1,5 @@
 import { useStore } from './store'
+import { eventManager } from './EventManager'
 
 const { actions } = useStore()
 
@@ -469,6 +470,37 @@ export const miaoyanApi = {
   }
 }
 
+// WebSocket API 封装
+export const socketApi = {
+  socket: null,
+  
+  /**
+   * 初始化 WebSocket 连接
+   */
+  init() {
+    this.socket = new WebSocket(WS_URL)
+    
+    this.socket.onmessage = (event) => {
+      const { type, data } = JSON.parse(event.data)
+      eventManager.handleSocketMessage(type, data)
+    }
+    
+    // 断线重连机制
+    this.socket.onclose = () => {
+      setTimeout(() => this.init(), 1000)
+    }
+  },
+  
+  /**
+   * 发送消息到服务器
+   */
+  send(type, data) {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type, data }))
+    }
+  }
+}
+
 // 导出 API 请求钩子
 export const useApi = () => ({
   user: userApi,
@@ -476,5 +508,6 @@ export const useApi = () => ({
   upload: uploadApi,
   auth: authApi,
   chat: chatApi,
-  miaoyan: miaoyanApi
+  miaoyan: miaoyanApi,
+  socket: socketApi
 }) 

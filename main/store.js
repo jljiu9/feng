@@ -118,7 +118,7 @@ const state = reactive({
     loadingStatus: 'idle', // idle, loading_vector, loading_index, requesting, responding
     currentResponse: null,
     error: null
-  }
+  },
 })
 
 // 状态操作方法
@@ -703,6 +703,16 @@ const actions = {
     if (state.chat.groupUnreadCount[groupId]) {
       state.chat.groupUnreadCount[groupId][userId] = 0
     }
+  },
+
+  // 新增通用确认方法
+  async confirm(options) {
+    return new Promise((resolve) => {
+      eventBus.emit('show-confirm', {
+        ...options,
+        resolve
+      })
+    })
   }
 }
 

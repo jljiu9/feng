@@ -11,6 +11,9 @@ import { ref, onMounted, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElNotification as notify } from 'element-plus'
 // import Lightgallery from 'lightgallery/vue';
+import { useStore } from './store'
+import PopConfirm from './components/ui/PopConfirm.vue'
+import { eventBus } from './events'
 
 // 这样做可以供所有组件使用
 window.notify = notify
@@ -238,6 +241,18 @@ onMounted(() => {
 	cl(router.getRoutes())
 	window.paths.value = window.rtnPaths(window.location.pathname)
 })
+
+const confirmState = ref(null)
+eventBus.on('show-confirm', (options) => {
+	confirmState.value = options
+})
+
+const handleConfirm = (result) => {
+	if (confirmState.value) {
+		confirmState.value.resolve(result)
+		confirmState.value = null
+	}
+}
 </script>
 
 <template>
@@ -350,6 +365,16 @@ onMounted(() => {
 		<kuang></kuang>
 		<drawer></drawer>
 		<login></login>
+		<!-- 全局确认对话框 -->
+		<PopConfirm
+			v-if="confirmState"
+			:title="confirmState.title"
+			:message="confirmState.message"
+			:confirm-text="confirmState.confirmText"
+			:cancel-text="confirmState.cancelText"
+			@confirm="handleConfirm(true)"
+			@cancel="handleConfirm(false)"
+		/>
 	</div>
 
 
@@ -455,5 +480,16 @@ body {
 		z-index: 10;
 	}
 
+}
+
+/* 添加全局弹出层z-index */
+.pop-confirm-container {
+  z-index: 9999;
+}
+
+/* 修复teleport内容被遮挡问题 */
+body {
+  position: relative;
+  z-index: 0;
 }
 </style>
